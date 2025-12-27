@@ -16,8 +16,15 @@ function App() {
   const [logPage,setLogPage] = useState(false)
   const [signPageState,setSignPageState] =useState(false)
 
+  const [filterType, setFilterType] = useState('all')
+
+  const [searchText,setSearchText] = useState('')
+  const [selectBook,setSelectBook] = useState([])
+
   const [myBooks,setMyBooks] = useState([])
   const [askPage,setAskPage] = useState(false)
+
+  const [admState,setAdmState] = useState(false)
   function getBookList () {
     fetch('http://8.162.10.6:8080/books')
       .then(response => {
@@ -26,7 +33,7 @@ function App() {
         }
         return response.json()
       })
-      .then(data => {setBooks(data.data)})
+      .then(data => {setBooks(data.data);setSelectBook(data.data)})
       .catch(error => {setGetAllErr(error.message)})
   }
 
@@ -34,12 +41,12 @@ function App() {
     return (<div>网络错误：{getAllErr}</div>)
   }
   function content () {
-    if (books.length === 0) {
+    if (selectBook.length === 0) {
       return (<div className='noBook'>暂无图书数据</div>)
     }
     return (
     <div className='allBooks'>
-      {books.map(book => (
+      {selectBook.map(book => (
         <div className='onebook' key={book.id}>
           <h3>{book.title}</h3>
           <p>作者：{book.author}</p>
@@ -133,6 +140,9 @@ function App() {
       console.log('获取当前用户数据:', data);
       setUserNameState(data.data.username);
       setMyBooks(data.data.borrowed_books);
+      if (data.data.is_admin) {
+        setAdmState(true);
+      }
       // 同步更新 localStorage 的用户信息
       localStorage.setItem('userInfo', JSON.stringify(data.data));
     })
@@ -158,8 +168,11 @@ function App() {
     if (user) localStorage.setItem('userInfo', JSON.stringify(user));
     
     setlogged(true);
+    setLogEmailState('')
+    setLogPassState('')
     setUserNameState(user?.username || '');
     getCurrentMe();
+    
   })
   .catch(error => {
     console.error('登录失败详情:', error);
@@ -265,9 +278,20 @@ function App() {
         <div>
           {myBorrowedBooks()}
         </div>
+        {admBtt()}
       </div>
     )
   }
+  function admBtt () {
+    if (admState) {
+      return (
+        <div>
+          <button style={{color: '#fff',backgroundColor: 'rgba(255, 80, 5, 1)',margin: '10px'}}>管理员页面</button>
+        </div>
+      )
+    }
+  }
+  // 一个管理员用户admin@qq.com, 密码12345678
   function outPage () {
     setAskPage(true)
   }
@@ -299,6 +323,7 @@ function App() {
       setlogged(false);
       setUserNameState('');
       setMyBooks([]);
+      setAdmState(false); 
       setPageChange(true)
       setAskPage(false)
       alert('退出登录成功！');
@@ -328,7 +353,8 @@ function App() {
         alert('登录态已失效，请重新登录');
         localStorage.clear(); // 清空失效存储
         setlogged(false);
-        setAskPage(false)
+        setAskPage(false);
+        setAdmState(false);
         setLogPage(true);
         throw new Error('token 失效');
       }
@@ -348,19 +374,54 @@ function App() {
       const user = JSON.parse(userInfo); // 转成对象
       setUserNameState(user.username); // 恢复用户名
       if (user.borrowed_books) setMyBooks(user.borrowed_books); // 恢复借阅列表
+      if (user.is_admin) setAdmState(true);
     }
   }, [])
+  function search () {
+  let filteredBooks = [...books]
+  const text = searchText.trim().toLowerCase(); 
+  
+  if (text !== '') {
+    switch (filterType) {
+      case 'title':
+        filteredBooks = filteredBooks.filter(book => 
+          book.title.toLowerCase().includes(text)
+        );
+        break;
+      case 'author':
+        filteredBooks = filteredBooks.filter(book => 
+          book.author.toLowerCase().includes(text)
+        );
+        break;
+      case 'id':
+        filteredBooks = filteredBooks.filter(book => 
+          book.id.toString().includes(text)
+        );
+        break;
+      case 'all':
+      default:
+        filteredBooks = filteredBooks.filter(book => 
+          book.title.toLowerCase().includes(text) || 
+          book.author.toLowerCase().includes(text) ||
+          book.id.toString().includes(text)
+        );
+    }
+  }
+  
+  setSelectBook(filteredBooks);
+}
   return (
     <>
       <div className='bigBack'>
         <div className='head'>
-          <input type="text" className='searchText' placeholder='请输入搜索文本'/>
-          <select name="" id="" className='options'>
+          <input type="text" className='searchText' placeholder='请输入搜索文本' value={searchText} onChange={(e) => {setSearchText(e.target.value)}}/>
+          <select name="" id="" className='options' value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <option value="all" selected>未筛选</option>
             <option value="title">按书名</option>
             <option value="author">按作者</option>
             <option value="id">按ID</option>
           </select>
-          <button className='headSearchBtt'>搜索</button>
+          <button className='headSearchBtt' onClick={search}>搜索</button>
           <button className='logIn headbutton' onClick={tryLogIn} >注册/登录</button>
           <button className='home headbutton' onClick={toHome}>个人中心</button>
           <button className='logOut headbutton' onClick={outPage}>退出账号</button>
