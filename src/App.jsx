@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route,Link } from 'react-router-dom'
+import UpdatePage from './update'
 import './App.css'
 
 function App() {  
@@ -140,13 +142,15 @@ function App() {
       console.log('获取当前用户数据:', data);
       setUserNameState(data.data.username);
       setMyBooks(data.data.borrowed_books);
-      if (data.data.is_admin) {
+      if (data.data.is_admin === true) {
         setAdmState(true);
+      } else {
+        setAdmState(false);
       }
       // 同步更新 localStorage 的用户信息
       localStorage.setItem('userInfo', JSON.stringify(data.data));
     })
-    .catch(error => console.log('获取当前用户失败：' + error))
+    .catch(error => {console.log('获取当前用户失败：' + error);setAdmState(false);})
   }
   function pushLog () {
     if (!logEmailState || !logPassState) {
@@ -166,6 +170,15 @@ function App() {
     const { token, user } = data.data || {}; 
     if (token) localStorage.setItem('token', token); 
     if (user) localStorage.setItem('userInfo', JSON.stringify(user));
+    
+     console.log('用户数据中的 is_admin:', user?.is_admin);
+    if (user?.is_admin === true) {
+      setAdmState(true);
+      console.log('已设置 admState 为 true');
+    } else {
+      setAdmState(false);
+      console.log('已设置 admState 为 false');
+    }
     
     setlogged(true);
     setLogEmailState('')
@@ -236,28 +249,28 @@ function App() {
       return;
     }
     request('http://8.162.10.6:8080/auth/register', { 
-    method: 'POST',
-    body: JSON.stringify({
-      "email": userEmailState,
-      "username": userNameState,
-      "password": userPassState
+      method: 'POST',
+      body: JSON.stringify({
+        "email": userEmailState,
+        "username": userNameState,
+        "password": userPassState
+      })
     })
-  })
-  .then(data => {
-    console.log('注册成功:', data);
-    alert('注册成功！即将为你跳转到登录页面');
-    setUserEmailState('');
-    setUserNameState('');
-    setUserPassState('');
-    setTimeout(() => {
-      backToLog()
-    }, 3000)
-  })
-  
-  .catch(error => {
-    console.error('注册请求失败:', error);
-    alert(`注册失败：${error.message}\n可能是邮箱已被注册`);
-  });
+    .then(data => {
+      console.log('注册成功:', data);
+      alert('注册成功！即将为你跳转到登录页面');
+      setUserEmailState('');
+      setUserNameState('');
+      setUserPassState('');
+      setTimeout(() => {
+        backToLog()
+      }, 1000)
+    })
+    
+    .catch(error => {
+      console.error('注册请求失败:', error);
+      alert(`注册失败：${error.message}\n可能是邮箱已被注册或您未退出当前账号`);
+    });
   }
 //  
   function toHome () {
@@ -272,13 +285,29 @@ function App() {
       )
     }
     return (
-      <div >
-        <div style={{margin: '20px',color: '#165407ff',fontSize: '30px',fontWeight: '900'}}>用户：{userNameState}</div>
-        <div style={{margin: '20px',color: '#543507ff',fontSize: '30px',fontWeight: '900'}}>你的书库（记得及时归还）<button style={{backgroundColor: '#0550b9ff',color: '#fff',marginLeft: '30vw',fontSize: '20px',fontWeight: '500'}} onClick={toHome}>返回书籍页面</button></div>
-        <div>
-          {myBorrowedBooks()}
+      <div>
+        
+        <div >
+          <div style={{margin: '20px',color: '#165407ff',fontSize: '30px',fontWeight: '900'}}>用户：{userNameState}</div>
+          <div style={{margin: '20px',color: '#543507ff',fontSize: '30px',fontWeight: '900'}}>
+            你的书库（记得及时归还）
+            <button style={{backgroundColor: '#0550b9ff',color: '#fff',marginLeft: '30vw',fontSize: '20px',fontWeight: '500'}} onClick={toHome}>返回书籍页面</button>
+          </div>
+          <div>
+            {myBorrowedBooks()}
+          </div>
+          {admBtt()}
+          <Link to="/update" onClick={() => {
+            setLogPage(false)
+            setSignPageState(false)
+          }}>
+            <button style={{color: '#fff',backgroundColor: '#d3d018ff',margin: '5px'}}>修改个人信息</button>
+          </Link>
+            
+          
         </div>
-        {admBtt()}
+          
+        
       </div>
     )
   }
@@ -374,7 +403,11 @@ function App() {
       const user = JSON.parse(userInfo); // 转成对象
       setUserNameState(user.username); // 恢复用户名
       if (user.borrowed_books) setMyBooks(user.borrowed_books); // 恢复借阅列表
-      if (user.is_admin) setAdmState(true);
+      if (user.is_admin === true) { // 显式判断，避免隐式类型转换问题
+        setAdmState(true);
+      } else {
+        setAdmState(false); // 兜底，确保状态一致
+      }
     }
   }, [])
   function search () {
@@ -412,31 +445,36 @@ function App() {
 }
   return (
     <>
-      <div className='bigBack'>
-        <div className='head'>
-          <input type="text" className='searchText' placeholder='请输入搜索文本' value={searchText} onChange={(e) => {setSearchText(e.target.value)}}/>
-          <select name="" id="" className='options' value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-            <option value="all" selected>未筛选</option>
-            <option value="title">按书名</option>
-            <option value="author">按作者</option>
-            <option value="id">按ID</option>
-          </select>
-          <button className='headSearchBtt' onClick={search}>搜索</button>
-          <button className='logIn headbutton' onClick={tryLogIn} >注册/登录</button>
-          <button className='home headbutton' onClick={toHome}>个人中心</button>
-          <button className='logOut headbutton' onClick={outPage}>退出账号</button>
-        </div>
-        
-        <div className='body'>
-          <div className='bookList'>
-            {pageChange ? content() : home()}
+      <BrowserRouter>
+        <div className='bigBack'>
+          <div className='head'>
+            <input type="text" className='searchText' placeholder='请输入搜索文本' value={searchText} onChange={(e) => {setSearchText(e.target.value)}}/>
+            <select name="" id="" className='options' value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+              <option value="all" selected>未筛选</option>
+              <option value="title">按书名</option>
+              <option value="author">按作者</option>
+              <option value="id">按ID</option>
+            </select>
+            <button className='headSearchBtt' onClick={search}>搜索</button>
+            <button className='logIn headbutton' onClick={tryLogIn} >注册/登录</button>
+            <button className='headbutton' onClick={() => setPageChange(true)}>返回图书库</button>
+            <button className='home headbutton' onClick={toHome}>个人中心</button>
+            <button className='logOut headbutton' onClick={outPage}>退出账号</button>
           </div>
+          
+          <div className='body'>
+            <div className='bookList'>
+            <Routes>
+              <Route path="/" element={pageChange ? content() : home()} />
+              <Route path="/update" element={<UpdatePage/>}/>
+            </Routes>
+            </div>
+          </div>
+          {askOut()}
+          {toLog()}
+          {toSign()}
         </div>
-        {askOut()}
-        {toLog()}
-        {toSign()}
-      </div>
-      
+      </BrowserRouter>
     </>
   )
 }
