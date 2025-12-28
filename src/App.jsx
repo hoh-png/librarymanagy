@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route,Link } from 'react-router-dom'
 import UpdatePage from './update'
+import AdminPage from './adminPage'
+import UserList from './userList'
+import BookList from './bookList'
 import './App.css'
 
 function App() {  
@@ -26,7 +29,6 @@ function App() {
   const [myBooks,setMyBooks] = useState([])
   const [askPage,setAskPage] = useState(false)
 
-  const [admState,setAdmState] = useState(false)
   function getBookList () {
     fetch('http://8.162.10.6:8080/books')
       .then(response => {
@@ -112,7 +114,7 @@ function App() {
   return (
     <div style={{padding: '5vh 0',textAlign: 'center'}}>
       {myBooks.map(book => (
-        <div style={{borderTop: '1px solid #0a2550ff',lineHeight: '5vh'}}key={book.id}>
+        <div style={{borderTop: '1px solid #0a2550ff',lineHeight: '5vh'}} key={book.id}>
           <h2>《{book.title}》</h2>
           作者：{book.author}
         </div>
@@ -142,15 +144,10 @@ function App() {
       console.log('获取当前用户数据:', data);
       setUserNameState(data.data.username);
       setMyBooks(data.data.borrowed_books);
-      if (data.data.is_admin === true) {
-        setAdmState(true);
-      } else {
-        setAdmState(false);
-      }
       // 同步更新 localStorage 的用户信息
       localStorage.setItem('userInfo', JSON.stringify(data.data));
     })
-    .catch(error => {console.log('获取当前用户失败：' + error);setAdmState(false);})
+    .catch(error => {console.log('获取当前用户失败：' + error);})
   }
   function pushLog () {
     if (!logEmailState || !logPassState) {
@@ -171,14 +168,6 @@ function App() {
     if (token) localStorage.setItem('token', token); 
     if (user) localStorage.setItem('userInfo', JSON.stringify(user));
     
-     console.log('用户数据中的 is_admin:', user?.is_admin);
-    if (user?.is_admin === true) {
-      setAdmState(true);
-      console.log('已设置 admState 为 true');
-    } else {
-      setAdmState(false);
-      console.log('已设置 admState 为 false');
-    }
     
     setlogged(true);
     setLogEmailState('')
@@ -296,30 +285,27 @@ function App() {
           <div>
             {myBorrowedBooks()}
           </div>
-          {admBtt()}
+          
           <Link to="/update" onClick={() => {
             setLogPage(false)
             setSignPageState(false)
-          }}>
+          }} style={{borderTop: 'solid #0a2550ff 1px'}}>
             <button style={{color: '#fff',backgroundColor: '#d3d018ff',margin: '5px'}}>修改个人信息</button>
           </Link>
             
-          
+          <Link to="/adminPage" onClick={() => {
+            setLogPage(false)
+            setSignPageState(false)
+          }}>
+            <button style={{color: '#fff',backgroundColor: 'rgba(255, 80, 5, 1)',margin: '10px',borderTop: 'solid #0a2550ff 1px'}}>管理员页面</button>
+          </Link>
         </div>
           
         
       </div>
     )
   }
-  function admBtt () {
-    if (admState) {
-      return (
-        <div>
-          <button style={{color: '#fff',backgroundColor: 'rgba(255, 80, 5, 1)',margin: '10px'}}>管理员页面</button>
-        </div>
-      )
-    }
-  }
+  
   // 一个管理员用户admin@qq.com, 密码12345678
   function outPage () {
     setAskPage(true)
@@ -352,7 +338,6 @@ function App() {
       setlogged(false);
       setUserNameState('');
       setMyBooks([]);
-      setAdmState(false); 
       setPageChange(true)
       setAskPage(false)
       alert('退出登录成功！');
@@ -383,7 +368,6 @@ function App() {
         localStorage.clear(); // 清空失效存储
         setlogged(false);
         setAskPage(false);
-        setAdmState(false);
         setLogPage(true);
         throw new Error('token 失效');
       }
@@ -403,11 +387,6 @@ function App() {
       const user = JSON.parse(userInfo); // 转成对象
       setUserNameState(user.username); // 恢复用户名
       if (user.borrowed_books) setMyBooks(user.borrowed_books); // 恢复借阅列表
-      if (user.is_admin === true) { // 显式判断，避免隐式类型转换问题
-        setAdmState(true);
-      } else {
-        setAdmState(false); // 兜底，确保状态一致
-      }
     }
   }, [])
   function search () {
@@ -466,6 +445,9 @@ function App() {
             <div className='bookList'>
             <Routes>
               <Route path="/" element={pageChange ? content() : home()} />
+              <Route path='/adminPage' element={<AdminPage/>}/>
+              <Route path='/adminPage/userList' element={<UserList/>}/>
+              <Route path='/adminPage/bookList' element={<BookList/>}/>
               <Route path="/update" element={<UpdatePage/>}/>
             </Routes>
             </div>
