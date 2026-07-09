@@ -30,7 +30,7 @@ function BookList () {
     }
     function stockChange () {
         if (stockIDState) {
-            const book = bookState.find(book => book.id === Number(stockIDState))
+            const book = bookState.find(book => book.id === stockIDState)
             if (!book) {
                 alert('未找到这本书！')
                 return
@@ -94,14 +94,14 @@ function BookList () {
                 }return response.json()
             })
             .then(data => {alert('成功新增图书！',data);getBooks()})
-            .catch(error => {alert('新增图书失败！');console.log(error.message)})
+            .catch(error => {alert('新增图书失败！想想你是不是管理员');console.log(error.message)})
         }
     }
     function createText () {
         if (createState) {
             return (
                 <div>
-                    <input type="text" style={{height: '5vh',width: '15vw'}} placeholder='请输入新加的书名' onchange={e => setCreateTitleState(e.target.value)} value={createTitleState}/>
+                    <input type="text" style={{height: '5vh',width: '15vw'}} placeholder='请输入新加的书名' onChange={e => setCreateTitleState(e.target.value)} value={createTitleState}/>
                     <input type="text" style={{height: '5vh',width: '15vw'}} placeholder='请输入新加书的作者' onChange={e => setCreateAuthorState(e.target.value)} value={createAuthorState}/>
                     <button style={{backgroundColor: '#000',color:'#fff'}} onClick={createChange}>确认更改</button>
                     <button style={{backgroundColor: '#000',color:'#fff',marginLeft: '5px'}} onClick={() => {setKillState(false);setChangeState(false);setCreateState(false)}}>取消</button>
@@ -110,12 +110,16 @@ function BookList () {
     }
     function deleteChange () {
         if (deleteState) {
-            const iidd = Number(deleteState)
+            const iidd = deleteState
             const bk = bookState.filter(book => book.id === iidd)
-            if (bk.length != 0) {
-                fetch(`http://8.162.10.6:8080/admin/books/{id}`,{
+            if (bk.length ===0) {
+                alert('未找到此书')
+            }
+            else if (bk.length != 0) {
+                fetch(`http://8.162.10.6:8080/admin/books/${iidd}`,{
                     method: 'DELETE',
                     headers: {
+                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem('token')}`
                     },
                 })
@@ -127,7 +131,6 @@ function BookList () {
                 .then(data => {alert('成功删除',data);getBooks()})
                 .catch(error => {alert('删除图书失败！');console.log(error.message)})
             }
-            
         }
     }
     function killText () {
